@@ -1,6 +1,7 @@
 #PEP: 9999
 Title: Improving the bytecode compiler
 Author: Mark Shannon <mark@hoypy.org>
+        Pablo Galindo <pablogsal@gmail.com>
 Status: Draft
 Type: Standards Track
 Python-Version: 3.9
@@ -17,6 +18,42 @@ This will produce a double benefit for performance as code will run faster, than
 The current compiler works in three passes. This PEP proposes replacing that with a four pass compiler,
 where each pass would be simpler and more focused.
 
+Motivation
+==========
+
+The current bytecode compiler pipeline is currently distributed across two files:
+
+* ``Python/compile.c`` contains all the machinery to convert the abstract syntax tree (AST) into a linear
+  sequence of bytecode.
+* ``Python/peephole.c`` contains the peephole optimizer, which receives the linear sequence of byte code and
+  performs many optimizations in it.
+
+Recently, many functionalities of the peephole optimizer have been ported elsewhere. The rationale
+behind this decision is that as the peephole optimizer acts on a linear sequence of bytecode,
+it has no information of the structure of the code or what original constructs correspond to
+the bytecode sequences is operating on. For this reason, many of these operations are much
+easier to do (or only possible to) in earlier stages of the compilation process. Some examples
+of this tendency are bpo-29469: Move constant folding from the peephole optimizer to the AST
+level or bpo-37289: Remove 'if False' handling in the peephole optimizer. Additionally, the
+peephole optimizer needs to fix the lnotab code attribute after performing the optimizations.
+Doing this operation on the linear sequence of bytecode after the elimination of some of the
+elements is very error prone due to the fact that there is no structure information available
+for the reconstruction.  One example of the chalenges this raises is bpo-38115: Deal with
+invalid bytecode offsets in lnotab, that deals with the peephole optimizer producing bytecode
+offsets that are no longer valid.
+
+Historically, compilers usually have explicit structures along the compilation pipeline in
+which different optimizations can operate more naturally of. One of these structures is a
+control flow graph (CFG). The CFG is a directed graph where the vertices represent basic blocks
+and edges represent possible transfer of control flow from one basic block to another. An
+important task of each compiler pass is to keep both the control flow graph up-to-date.
+Reconstruction of the control flow graph after each pass is not an option, since it may be very
+expensive and lost information sometimes cannot be reconstructed at all. The control flow graph
+in CPython is not an explicit structure and therefore optimizations that would be more natural
+to be applied to the CFG are applied to suboptimal structures resulting in code that is tightly
+coupled with the idiosyncracies of the implementation.
+
+...
 
 Rationale
 =========
