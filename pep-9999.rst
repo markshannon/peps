@@ -233,7 +233,7 @@ where the condition is a constant.
 Reference Implementation
 ========================
 
-  To do...
+  https://github.com/markshannon/cpython/tree/better-code-generation
 
 
 References
