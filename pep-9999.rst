@@ -1,0 +1,187 @@
+PEP: 6xx
+Title: Make confusing expression in annotations into syntax errors
+Author: Mark Shannon <mark@python.org>
+Status: Active
+Type: Process
+Content-Type: text/x-rst
+Created: 13-Jan-2021
+Post-History: xx-xxx-2021
+
+
+Abstract
+========
+
+Annotations, as introduced in PEP 3017 and elaborated in PEPs 484 and 526,
+have always been meant, not as executable code, but as descriptive helpers.
+
+However, some Python expressions have impact beyond their immediate scope
+and can cause confusion when what appears declarative becomes executable.
+
+In order to avoid code that can be highly confusing, and with surprising semantics
+that are rarely what the author intended, this PEP proposes making these constructs
+syntax errors.
+
+Specifically, the following expressions will be treated as syntax errors if they occur
+in an annotation:
+
+* Assignment expression (the walrus operator)
+* Yield or yield from
+* Await or async generators
+* Nonlocal variables
+
+Use of await, async generators, and nonlocal variables will be a syntax error in 3.10.
+Use of an assignment expression, ``yield`` or ``yield from`` will produce a syntax warning in 3.10 
+and be a syntax error in 3.11 and above.
+
+Motivation
+==========
+
+PEP 563 and the proposed PEP 649 defer the evaluation on annotations.
+This means that the annotations are typically evaluated in a different context
+from the one in which they would have been evaluated in Python 3.9 and earlier.
+
+
+Rationale
+=========
+
+While it would be feasible to maintain more backwards compatibility,
+the engineering effort required would not would worth it,
+to support a feature which is already confusing.
+
+Raising a syntax error, provides a clear warning to the user that they are 
+doing something wrong and simplifies reasoning about the effects of deferred evaluation.
+A simple language is easier to implement, resulting in fewer bugs.
+
+In the authors' opinion the benefits of clarity and reliability outweigh any
+advantages of allowing these expressions in annotations.
+
+Specification
+=============
+
+The use of the following expressions in an annotation will result in a syntax warning or error:
+
+* Assignment expression (the walrus operator)
+* Yield or yield from
+* Await or async generators
+* Nonlocal variables
+
+Assignment expressions
+----------------------
+
+The use of an assignment expression in annotation will result in a syntax warning in Python 3.10
+and a syntax error in later versions.
+
+Yield or yield from
+-------------------
+
+The use of ``yield`` or ``yield from`` as an annotation on an inner function will be a syntax warning in 3.10 and
+continue to cause the enclosing function to be a generator function.
+In later versions it will be a syntax error.
+
+The use of ``yield`` or ``yield from`` is already a syntax error at class or module scope. That will not change.
+
+Await or async generators
+-------------------------
+
+
+
+
+Backwards Compatibility
+=======================
+
+Assignment expression (the walrus operator)
+-------------------------------------------
+
+Up to Python 3.9 using an assignment expression in an annotation,
+would assign the annotation value, as well as assigning the annotation.
+
+For example::
+
+  class C:
+      x: (a := int)
+
+  >>> C.a
+  int
+  >>> C.__annotations__
+  {'x': int}
+
+The above code would need to be changed to::
+
+  class C:
+    a = int
+    x: int
+
+
+Yield and yield from
+--------------------
+
+A ``yield`` or ``yield from`` in an annotation makes
+the enclosing function a generator function.
+
+For example::
+
+  def outer():
+
+      def inner()->(yield int):
+          ...
+
+In Python 3.9 ``outer`` is a generator function.
+There are other ways to declare a function as a generator without
+actually yielding, for example:
+
+::
+
+  def outer():
+      if False:
+        yield
+
+      def inner()->int:
+          ...
+
+In 3.10, when a warning is issued for a ``yield`` in an annotation,
+the enclosing scope will remain a generator function.
+
+
+Await or async generators
+-------------------------
+
+The meaning of these expressions in deferred annotations is unclear to the authors and,
+we assume, anyone else. Prohibition seems the only sensible option here.
+
+Non local variables
+-------------------
+
+Allowing non-local variable in deferred annotations will keep
+the enclosing closure alive forever. This may cause serious
+memory leaks, so will be prohibited in 3.10.
+
+
+Rejected Ideas
+==============
+
+None, as yet.
+
+
+Open Issues
+===========
+
+Needs discussion on python-dev.
+
+
+Copyright
+=========
+
+This document is placed in the public domain or under the
+CC0-1.0-Universal license, whichever is more permissive.
+
+
+
+..
+    Local Variables:
+    mode: indented-text
+    indent-tabs-mode: nil
+    sentence-end-double-space: t
+    fill-column: 70
+    coding: utf-8
+    End:
+
