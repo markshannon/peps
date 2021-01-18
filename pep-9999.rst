@@ -1,5 +1,5 @@
 PEP: 6xx
-Title: Make confusing expression in annotations into syntax errors
+Title: Make confusing expressions in annotations into syntax errors
 Author: Mark Shannon <mark@python.org>
 Status: Active
 Type: Process
@@ -14,11 +14,11 @@ Abstract
 Annotations, as introduced in PEP 3017 and elaborated in PEPs 484 and 526,
 have always been meant, not as executable code, but as descriptive helpers.
 
-However, some Python expressions have impact beyond their immediate scope
-and can cause confusion when what appears declarative becomes executable.
+However, some Python expressions have impact beyond their immediate extent
+and can cause confusion when what appears declarative has runtime effect.
 
 In order to avoid code that can be highly confusing, and with surprising semantics
-that are rarely what the author intended, this PEP proposes making these constructs
+that are rarely what the author intended, this PEP proposes making those constructs
 syntax errors.
 
 Specifically, the following expressions will be treated as syntax errors if they occur
@@ -36,21 +36,23 @@ and be a syntax error in 3.11 and above.
 Motivation
 ==========
 
-PEP 563 and the proposed PEP 649 defer the evaluation on annotations.
+PEP 563, and the proposed PEP 649, defer the evaluation on annotations.
 This means that the annotations are typically evaluated in a different context
 from the one in which they would have been evaluated in Python 3.9 and earlier.
 
+Allowing the above expressions in annotations will make the semantics difficult to describe
+and the implmentation complex and error prone.
 
 Rationale
 =========
 
 While it would be feasible to maintain more backwards compatibility,
-the engineering effort required would not would worth it,
-to support a feature which is already confusing.
+given that these features are already confusing, 
+the engineering effort required would not would worth it.
 
 Raising a syntax error, provides a clear warning to the user that they are 
 doing something wrong and simplifies reasoning about the effects of deferred evaluation.
-A simple language is easier to implement, resulting in fewer bugs.
+A simpler language is easier to implement, resulting in fewer bugs.
 
 In the authors' opinion the benefits of clarity and reliability outweigh any
 advantages of allowing these expressions in annotations.
@@ -74,7 +76,7 @@ and a syntax error in later versions.
 Yield or yield from
 -------------------
 
-The use of ``yield`` or ``yield from`` as an annotation on an inner function will be a syntax warning in 3.10 and
+The use of ``yield`` or ``yield from`` in an annotation on an inner function will be a syntax warning in 3.10 and
 continue to cause the enclosing function to be a generator function.
 In later versions it will be a syntax error.
 
@@ -83,8 +85,12 @@ The use of ``yield`` or ``yield from`` is already a syntax error at class or mod
 Await or async generators
 -------------------------
 
+The use of ``await`` or an ``async`` generator in an annotation will be a syntax error in Python 3.10
 
+Nonlocal variables
+------------------
 
+The use of nonlocal variables in an annotation will be a syntax error in Python 3.10
 
 Backwards Compatibility
 =======================
