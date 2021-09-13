@@ -1,0 +1,127 @@
+PEP: 6xx
+Title: High level JIT Compiler interface for CPython
+Author: Mark Shannon <mark@hotpy.org>
+Status: Draft
+Type: Standards Track
+Content-Type: text/x-rst
+Created: 20-Aug-2021
+Post-History: xx-???-2021
+
+Abstract
+========
+
+High performance virtual machines for dynamic languages achieve their performance in many ways.
+One of those is by compiling some parts of the program to machine code.
+This compilation process is commonly known as "JIT" compilation.
+
+JIT compilation is necessary for high performance, but it is not sufficient.
+Therefore a JIT compiler should be subservient to the virtual machine, not the other way around.
+
+This PEP provides an API for plugging in a JIT compiler to the CPython virtual machine,
+that lets the virtual machine select which points in the code merit compilation, but leave 
+it to the JIT compiler to perform that compilation.
+
+This PEP renders PEP 523 obsolete, and the interface specified by PEP 523 will be removed.
+
+Motivation
+==========
+
+The existence of Cinder [cite] shows that there is the ability and willingness to produce
+a JIT compiler for CPython. However, the JIT compiler in Cinder is tied to Cinder specifics
+and cannot be reused for CPython. By providing an API that allows the compiler to focus on
+producing machine code, we can have better compilers that work more effectively with the
+rest of the virtual machine.
+
+Rationale
+=========
+
+
+Pyjion cite( https://github.com/tonybaloney/Pyjion) is another compiler that uses PEP 523.
+PEP 523 assumes that the virtual machine is subservient to the JIT compiler. This limits
+the operation of the VM and introduces some inefficiencies.
+
+Not only that, it limits the choice of region that can be compiled. Preventing the 
+VM from choosing more appropriate starts to regions, and the compiler from selecting more appropriate
+extents.
+
+Specification
+=============
+
+The compiler will be a reference counted Python object and must extend the following C struct::
+
+  typedef struct _py_compiler {
+      PyObject_HEAD
+      CompilationResult (*compile)(PyCodeObject *code, int offset, PyObject *result);
+      void (*free_code)(_PyMachineCode *code);
+  } _PyCompiler;
+
+  typedef enum _compilation_result {
+      SUCCESS = 0,
+      FAILURE = -1,
+      DECLINED = 1,
+      DEFERRED = 2,
+  } CompilationResult;
+
+``*result`` should be a machine code object (described below) on ``SUCCESS``, and untouched otherwise.
+In event of ``FAILURE``, an ``Exception`` should be set.
+If ``DECLINED`` is returned, then the VM will not attempt to compile at this point again.
+If ``DEFERRED`` is returned, then the VM may attempt to compile from this point in the future.
+
+The machine code object must be a reference counted Python object and must extend the following C struct::
+
+  typedef struct _machine_code {
+      PyObject_HEAD
+      Status execute(InterpreterFrame frame, PyObject **stack_pointer, PyObject **locals);
+      uint64_t deopt_bloom_1;
+      uint64_t deopt_bloom_2;
+  } _PyMachineCode;
+
+  typedef enum _status {
+      OK = 0,
+      EXCEPTION = -1,
+  } Status;
+
+The ``execute`` function takes the current frame and stack pointers. When the ``execute`` function is called, the
+VM will ensure that all VM state is correct and in memory, *except* the stack pointers, which is passed
+as an arguments. On return all the VM state must be correct and in memory. The return code determines whether an Exception
+has been raised and needs to be handled by the VM. The ``execute`` function is expected to advance the state of execution,
+but it is not required to do so. The following is a valid, if useless, implementation::
+
+    Status execute(InterpreterFrame frame, PyObject **stack_pointer, PyObject **locals) {
+        frame->stackdepth = stack_pointer - frame->stack;
+        return SUCCESS;
+    }
+
+
+
+Open Issues
+===========
+
+The high level interface requires the compiler to decide what region to compiled, and
+requires the compiler to understand the state of the VM to make that decision.
+
+In future we may add a low-level compiler interface which explicitly tells the compiler
+what region to compile, possibly passing some intermediate representation of that region.
+
+References
+==========
+
+[A collection of URLs used as references through the PEP.]
+
+
+Copyright
+=========
+
+This document is placed in the public domain or under the
+CC0-1.0-Universal license, whichever is more permissive.
+
+
+
+..
+    Local Variables:
+    mode: indented-text
+    indent-tabs-mode: nil
+    sentence-end-double-space: t
+    fill-column: 70
+    coding: utf-8
+    End:
