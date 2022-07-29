@@ -1,5 +1,5 @@
 PEP: 6xx
-Title: High level JIT Compiler interface for CPython
+Title: High level Optimizer interface for CPython
 Author: Mark Shannon <mark@hotpy.org>
 Status: Draft
 Type: Standards Track
@@ -10,94 +10,191 @@ Post-History: xx-???-2021
 Abstract
 ========
 
-High performance virtual machines for dynamic languages achieve their performance in many ways.
+High performance virtual machines for dynamic languages achieve their performance
+in many ways.
 One of those is by compiling some parts of the program to machine code.
 This compilation process is commonly known as "JIT" compilation.
+There is also evidence that an optimizing interpreter can perform well [1].
 
-JIT compilation is necessary for high performance, but it is not sufficient.
-Therefore a JIT compiler should be subservient to the virtual machine, not the other way around.
+Rather than dictate the method of optimization, CPython should provide an API
+for plugging in optimizers to CPython.
 
-This PEP provides an API for plugging in a JIT compiler to the CPython virtual machine,
-that lets the virtual machine select which points in the code merit compilation, but leave 
-it to the JIT compiler to perform that compilation.
+However, for any of these approaches to work well, profiling and location of
+hotspots is needed. These tasks should be the responsibility of the VM, not the
+optimizer.
 
-This PEP renders PEP 523 obsolete, and the interface specified by PEP 523 will be removed.
+Therefore the optimizer should be subservient to the virtual machine, not the 
+other way around. PEP 523 has this back-to-front, and ends up preventing some
+optimizations, specifically cross-call optimizations.
+
+This PEP provides an API for plugging in an optimizer to the CPython virtual
+machine, that lets the virtual machine select which points in the code merit
+optimization, but leave it to the optimizer to perform that compilation.
+
+This PEP renders PEP 523 obsolete, and the interface specified by
+PEP 523 will be removed.
 
 Motivation
 ==========
 
-The existence of Cinder [cite] shows that there is the ability and willingness to produce
-a JIT compiler for CPython. However, the JIT compiler in Cinder is tied to Cinder specifics
-and cannot be reused for CPython. By providing an API that allows the compiler to focus on
-producing machine code, we can have better compilers that work more effectively with the
-rest of the virtual machine.
+The existence of Cinder [2] and Pyston [3] shows that there is the ability
+and willingness to produce an optimizer for CPython. However, the JIT compiler in
+Cinder is tied to Cinder specifics and cannot be reused for CPython.
+Likewise for Pyston. By providing an API that allows the optimizer to focus on
+producing machine code, we can have better optimizers that work more effectively
+with the rest of the virtual machine.
 
 Rationale
 =========
 
 
-Pyjion cite( https://github.com/tonybaloney/Pyjion) is another compiler that uses PEP 523.
-PEP 523 assumes that the virtual machine is subservient to the JIT compiler. This limits
-the operation of the VM and introduces some inefficiencies.
+Pyjion cite( https://github.com/tonybaloney/Pyjion) is another compiler
+that uses PEP 523. PEP 523 assumes that the virtual machine is subservient
+to the JIT compiler. This limits the operation of the VM and introduces
+some inefficiencies.
 
-Not only that, it limits the choice of region that can be compiled. Preventing the 
-VM from choosing more appropriate starts to regions, and the compiler from selecting more appropriate
-extents.
+Not only that, it limits the choice of region that can be optimized. 
+Preventing the VM from choosing more appropriate starts to regions,
+and the optimizer from selecting more appropriate extents.
 
 Specification
 =============
 
-The compiler will be a reference counted Python object and must extend the following C struct::
 
-  typedef struct _py_compiler {
-      PyObject_HEAD
-      CompilationResult (*compile)(PyCodeObject *code, int offset, PyObject *result);
-      void (*free_code)(_PyMachineCode *code);
-  } _PyCompiler;
+The following structs and functions will be added to the unstable C-API::
+
+    type struct {
+        OBJECT_HEADER;
+        _PyInterpreterFrame *(*execute)(PyExecutorObject *self, 
+                                        _PyInterpreterFrame *frame,
+                                        PyObject **stack_pointer);
+        /* Data needed by the executor goes here, but is opaque to the VM */
+    } _PyExecutorObject;
+
+    typedef enum {
+        FUNCTION_ENTRY = 1,
+        BACK_EDGES = 2,
+        ANY_INSTRUCTION = 7 /* Implies both the above */
+    } _PyOptimizerCapabilities;
 
   typedef enum _compilation_result {
-      SUCCESS = 0,
       FAILURE = -1,
+      SUCCESS = 0,
       DECLINED = 1,
       DEFERRED = 2,
-  } CompilationResult;
+  } _PyOptimizationResult;
 
-``*result`` should be a machine code object (described below) on ``SUCCESS``, and untouched otherwise.
-In event of ``FAILURE``, an ``Exception`` should be set.
-If ``DECLINED`` is returned, then the VM will not attempt to compile at this point again.
-If ``DEFERRED`` is returned, then the VM may attempt to compile from this point in the future.
+    type struct {
+        OBJECT_HEADER;
+        _PyOptimizationResult (*optimize)(PyOptimizerObject* self, 
+                                          PyCodeObject *code, int offset, 
+                                          PyExecutorObject **result);
+        int capabilities; /* Bitwise or of PyOptimizerCapabilities */
+        float optimization_cost;
+        float run_cost;
+        /* Data needed by the compiler goes here, but is opaque to the VM */
+    } _PyOptimizerObject;
 
-The machine code object must be a reference counted Python object and must extend the following C struct::
+    void _Py_Executor_Replace(PyCodeObject *code, int offset, PyExecutorObject *executor);
 
-  typedef struct _machine_code {
-      PyObject_HEAD
-      Status execute(InterpreterFrame frame, PyObject **stack_pointer, PyObject **locals);
-      uint64_t deopt_bloom_1;
-      uint64_t deopt_bloom_2;
-  } _PyMachineCode;
+    int _Py_Optimizer_Register(_PyOptimizerObject* optimizer);
 
-  typedef enum _status {
-      OK = 0,
-      EXCEPTION = -1,
-  } Status;
+The ``optimize()`` function pointer in the ``_PyOptimizerObject`` should behave as follows:
+
+If returning ``SUCCESS`` the ``result`` should be a ``_PyExecutorObject``. ``result`` should be untouched otherwise.
+if returning ``FAILURE``, an ``Exception`` should be set.
+
+If ``DECLINED`` is returned, then the VM will not attempt to optimize at this point again.
+If ``DEFERRED`` is returned, then the VM may attempt to optimize from this point in the future.
 
 The ``execute`` function takes the current frame and stack pointers. When the ``execute`` function is called, the
-VM will ensure that all VM state is correct and in memory, *except* the stack pointers, which is passed
-as an arguments. On return all the VM state must be correct and in memory. The return code determines whether an Exception
-has been raised and needs to be handled by the VM. The ``execute`` function is expected to advance the state of execution,
-but it is not required to do so. The following is a valid, if useless, implementation::
+VM will ensure that all VM state is correct and in memory, *except* the stack pointer, which is passed
+as an arguments. On return all the VM state must be correct and in memory.
+If an exception has been raised, ``execute()`` must return NULL.
+If no exception has been raised, ``execute()`` must the current frame pointer, which must be consistent with memory.
 
-    Status execute(InterpreterFrame frame, PyObject **stack_pointer, PyObject **locals) {
-        frame->stackdepth = stack_pointer - frame->stack;
-        return SUCCESS;
+Removal of PEP 523 and porting PEP 523 based optimizers
+=======================================================
+
+If this PEP is accepted all data structures and functions that are part of PEP 523 will be removed.
+
+Optimizers using PEP 523 can be ported to this API roughly as follows:
+
+The ``execute()`` function can delegate to old PEP 523 evaluate function::
+
+    _PyInterpreterFrame *execute(PyExecutorObject *self, _PyInterpreterFrame *frame, PyObject **stack_pointer);
+        _PyFrame_SetStackPointer(frame, stack_pointer);
+        PyObject *retval = pep523_eval(tstate, frame);
+        if (retval == NULL) {
+            return NULL;
+        }
+        return tstate->cframe->current_frame;
     }
 
+The ``capabilities`` should be set to ``FUNCTION_ENTRY`` only.
+
+Data that would have been stored in ``co_extra`` can now be stored in the ``_PyExecutorObject``::
+
+    type struct {
+        PY_EXECUTOR_HEAD;
+        void *co_extra;
+    } _PyPEP523ExecutorObject;
+
+In practice, in is unlikely that any optimizer will use this approach, as method-at-time JITs like
+Cinder use the vectorcall protocol to replace the function's vectorcall with custom machine code.
+
+Implementation outline
+======================
+
+Finding hotspots
+----------------
+
+This can be done with two counters. One on backedges and function entry points,
+and one global counters. We hit a hotspot when the code is executed frequently.
+The frequency we need to reach depends on the optimization_cost and run_cost
+of the optimizer, as well as how long the program has been running,
+optimize when frequency > threshold.
+frequency = delta(local counter)/delta(global counter).
+threshold = N*(1/((global counter)+1)) + M*optimization_cost/run_cost where M
+and N are tunable parameters.
+
+We check frequency whenever the local counter hits 0.
+Since we started the local counter at some constant K,
+then delta(local counter) == K. If we store the value of the global
+counter when the local counter was set to K,
+then we have frequency = K/((global counter) - (local value of global counter))
+
+With C = M*optimization_cost/run_cost
+frequency > threshold is equivalent to
+K/((global counter) - (local value of global counter)) > N*(1/((global counter)+1)) + C
+It is then just algebra, to re-organize the above equations into an efficient test of frequency > threshold.
+
+Entering executor objects
+-------------------------
+
+Once we have hit a hotspot and got a PyExecutorObject,
+we need to transfer execution to it.
+Once again, we use our ability to replace instructions at runtime.
+Given that any potential hotspot needs space for counters,
+we can reuse that space to point to a PyExecutorObject
+and replace the JUMP_BACKWARD with an ENTER_EXECUTOR opcode::
+
+    TARGET(ENTER_EXECUTOR) {
+        _PyExecutorCache *cache = (_PyExecutorCache *)next_instr;
+        PyExecutorObject *executor = read_obj(cache->executor);
+        frame = executor->execute(executor, frame, stack_pointer);
+        assert(cframe.current_frame == frame);
+        goto resume_frame;
+    }
+
+The equivalent version for function entry would replace RESUME
+and probably store the executor on the code object, not inline.
 
 
 Open Issues
 ===========
 
-The high level interface requires the compiler to decide what region to compiled, and
+The high level interface requires the optimizer to decide what region to compiled, and
 requires the compiler to understand the state of the VM to make that decision.
 
 In future we may add a low-level compiler interface which explicitly tells the compiler
@@ -107,6 +204,17 @@ References
 ==========
 
 [A collection of URLs used as references through the PEP.]
+
+.. [1] The construction of high-performance virtual machines for dynamic languages, Mark Shannon 2010.
+  http://theses.gla.ac.uk/2975/1/2011shannonphd.pdf
+
+.. [2] Cinder 
+  https://github.com/facebookincubator/cinder
+
+
+.. [3] Pyston
+   https://www.pyston.org/
+
 
 
 Copyright
