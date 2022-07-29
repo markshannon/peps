@@ -10,26 +10,13 @@ Post-History: xx-???-2021
 Abstract
 ========
 
-High performance virtual machines for dynamic languages achieve their performance
-in many ways.
-One of those is by compiling some parts of the program to machine code.
-This compilation process is commonly known as "JIT" compilation.
-There is also evidence that an optimizing interpreter can perform well [1].
-
-Rather than dictate the method of optimization, CPython should provide an API
-for plugging in optimizers to CPython.
-
-However, for any of these approaches to work well, profiling and location of
-hotspots is needed. These tasks should be the responsibility of the VM, not the
-optimizer.
-
-Therefore the optimizer should be subservient to the virtual machine, not the 
-other way around. PEP 523 has this back-to-front, and ends up preventing some
-optimizations, specifically cross-call optimizations.
+High performance virtual machines for dynamic languages achieve their
+performance in many ways. Usually, the VM performs type profiling and
+detects hotspots before optimizing "hot" regions of code.
 
 This PEP provides an API for plugging in an optimizer to the CPython virtual
 machine, that lets the virtual machine select which points in the code merit
-optimization, but leave it to the optimizer to perform that compilation.
+optimization, but leave it to the optimizer to perform that optimization.
 
 This PEP renders PEP 523 obsolete, and the interface specified by
 PEP 523 will be removed.
@@ -41,21 +28,35 @@ The existence of Cinder [2] and Pyston [3] shows that there is the ability
 and willingness to produce an optimizer for CPython. However, the JIT compiler in
 Cinder is tied to Cinder specifics and cannot be reused for CPython.
 Likewise for Pyston. By providing an API that allows the optimizer to focus on
-producing machine code, we can have better optimizers that work more effectively
+optimization, we can have better optimizers that work more effectively
 with the rest of the virtual machine.
 
 Rationale
 =========
 
+Since optimization occurs at runtime, it makes sense to optimize only those
+sections that are "hot", that are likely to executed many times.
+The key to optimization of dynamic languages is specialization, where code
+is optimization in a way that speculates the types and values it will encounter.
 
-Pyjion cite( https://github.com/tonybaloney/Pyjion) is another compiler
-that uses PEP 523. PEP 523 assumes that the virtual machine is subservient
-to the JIT compiler. This limits the operation of the VM and introduces
-some inefficiencies.
+For optimization to work, the VM needs to monitor the performance characteristics
+of the program and to gather profiling information *before* optimization.
 
-Not only that, it limits the choice of region that can be optimized. 
-Preventing the VM from choosing more appropriate starts to regions,
-and the optimizer from selecting more appropriate extents.
+Therefore, we want the VM to responsible for deciding when to optimize, and
+from where, and to have gathered sufficient profiling information before it
+requests the optimizer to do its job. 
+
+It is then up to the optimizer to optimize some region of code from the given
+starting point, and using the gathered information. It is up to the 
+optimizer how it uses that information and the extent of the region it
+optimizes.
+
+The provided API allows the VM to control when and where optimization occurs,
+and allows the optimizer to decide how it occurs.
+
+PEP 523 has this back-to-front, and ends up preventing some optimizations, 
+specifically cross-call optimizations. It also limits optimizers to 
+optimizing one entire function at a time.
 
 Specification
 =============
