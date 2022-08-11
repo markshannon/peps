@@ -1,0 +1,120 @@
+@charset "UTF-8";
+
+/* Media Queries */
+
+/* Further reduce width of fixed elements for smallest screens */
+@media (max-width: 32em) {
+    section#pep-page-section {
+        padding: 0.25rem;
+    }
+    dl.footnote > dt,
+    dl.footnote > dd {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    pre {
+        font-size: 0.75rem;
+    }
+}
+
+/* Reduce padding & margins for smaller screens */
+@media (max-width: 40em) {
+    section#pep-page-section {
+        padding: 0.5rem;
+    }
+    section#pep-page-section > header > h1 {
+        padding-right: 0;
+        border-right: none;
+    }
+    ul.breadcrumbs {
+        padding: 0 0 .5rem;
+    }
+    nav#pep-sidebar {
+        display: none;
+    }
+    pre {
+        font-size: 0.8175rem;
+    }
+    table th,
+    table td {
+        padding: 0 0.1rem;
+    }
+}
+
+@media (min-width: 40em) {
+    section#pep-page-section {
+        display: table;
+        margin: 0 auto;
+        max-width: 75em;
+        padding: 0.5rem 1rem 0;
+        width: 100%;
+    }
+    section#pep-page-section > article {
+        max-width: 37em;
+        width: 74%;
+        float: right;
+        margin-right: 0;
+        font-size: 1rem;
+    }
+    nav#pep-sidebar {
+        width: 24%;
+        float: left;
+        margin-right: 2%;
+    }
+  /* Make less prominent when sidebar ToC is available */
+  details > summary {
+      font-size: 1rem;
+      width: max-content;
+  }
+}
+@media (min-width: 60em) {
+    section#pep-page-section > article {
+        max-width: 56em;
+        padding-left: 3.2%;
+        padding-right: 3.2%;
+    }
+}
+
+@media print {
+    *,
+    *:before,
+    *:after {
+        color: #000 !important;
+    }
+    body {
+        font-size: 10pt;
+        line-height: 1.67;
+    }
+    *[role="main"] a[href]:after {
+        content: " (" attr(href) ")";
+        font-size: .75rem;
+    }
+    pre,
+    blockquote {
+        page-break-inside: avoid;
+    }
+    thead {
+        display: table-header-group;
+    }
+    tr,
+    img {
+        page-break-inside: avoid;
+    }
+    img {
+        max-width: 100% !important;
+    }
+    @page {
+        margin: 0.5cm;
+    }
+    p,
+    h2,
+    h3 {
+        orphans: 3;
+        widows: 3;
+    }
+    h1,
+    h2,
+    h3 {
+        page-break-after: avoid;
+    }
+}

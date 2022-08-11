@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0">
+  <channel>
+    <title>Newest Python PEPs</title>
+    <link>https://peps.python.org/peps.rss</link>
+    <description>Newest Python Enhancement Proposals (PEPs) - Information on new language features, and some meta-information like release procedure and schedules.</description>
+    <atom:link href="https://peps.python.org/peps.rss" rel="self"/>
+    <docs>https://cyber.harvard.edu/rss/rss.html</docs>
+    <language>en</language>
+    <lastBuildDate>Thu, 11 Aug 2022 16:35:01 GMT</lastBuildDate>
+    <item>
+      <title>PEP 696: Type defaults for TypeVarLikes</title>
+      <link>https://peps.python.org/pep-0696/</link>
+      <description>This PEP introduces the concept of type defaults for TypeVarLikes (TypeVar, ParamSpec and TypeVarTuple), which act as defaults for a type parameter when none is specified.</description>
+      <author>James Hilton-Balfe (gobot1234yt@gmail.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0696/</guid>
+      <pubDate>Thu, 14 Jul 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 695: Type Parameter Syntax</title>
+      <link>https://peps.python.org/pep-0695/</link>
+      <description>This PEP specifies an improved syntax for specifying type parameters within a generic class, function, or type alias. It also introduces a new statement for declaring type aliases.</description>
+      <author>Eric Traut (erictr at microsoft.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0695/</guid>
+      <pubDate>Wed, 15 Jun 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 694: Upload 2.0 API for Python Package Repositories</title>
+      <link>https://peps.python.org/pep-0694/</link>
+      <description>There is currently no standardized API for uploading files to a Python package repository such as PyPI. Instead, everyone has been forced to reverse engineer the non-standard API from PyPI.</description>
+      <author>Donald Stufft (donald@stufft.io)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0694/</guid>
+      <pubDate>Sat, 11 Jun 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 692: Using TypedDict for more precise \*\*kwargs typing</title>
+      <link>https://peps.python.org/pep-0692/</link>
+      <description>Currently **kwargs can be type hinted as long as all of the keyword arguments specified by them are of the same type. However, that behaviour can be very limiting. Therefore, in this PEP we propose a new way to enable more precise **kwargs typing. The new approach revolves around using TypedDict to type **kwargs that comprise keyword arguments of different types. It also involves introducing a grammar change and a new dunder __unpack__.</description>
+      <author>Franek Magiera (framagie@gmail.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0692/</guid>
+      <pubDate>Sun, 29 May 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 693: Python 3.12 Release Schedule</title>
+      <link>https://peps.python.org/pep-0693/</link>
+      <description>This document describes the development and release schedule for Python 3.12.  The schedule primarily concerns itself with PEP-sized items.</description>
+      <author>Thomas Wouters (thomas@python.org)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0693/</guid>
+      <pubDate>Tue, 24 May 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 691: JSON-based Simple API for Python Package Indexes</title>
+      <link>https://peps.python.org/pep-0691/</link>
+      <description>The "Simple Repository API" that was defined in PEP 503 (and was in use much longer than that) has served us reasonably well for a very long time. However, the reliance on using HTML as the data exchange mechanism has several shortcomings.</description>
+      <author>Donald Stufft (donald@stufft.io)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0691/</guid>
+      <pubDate>Wed, 04 May 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 690: Lazy Imports</title>
+      <link>https://peps.python.org/pep-0690/</link>
+      <description>This PEP proposes a feature to transparently defer the execution of imported modules until the moment when an imported object is first used.  Since Python programs commonly import many more modules than a single invocation of the program is likely to use in practice, lazy imports can greatly reduce the overall number of modules loaded, improving startup time and memory usage. Lazy imports also mostly eliminate the risk of import cycles.</description>
+      <author>Germán Méndez Bravo (german.mb@gmail.com), Carl Meyer (carl@oddbird.net)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0690/</guid>
+      <pubDate>Fri, 29 Apr 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 688: Making the buffer protocol accessible in Python</title>
+      <link>https://peps.python.org/pep-0688/</link>
+      <description>This PEP proposes a mechanism for Python code to inspect whether a type supports the C-level buffer protocol. This allows type checkers to evaluate whether objects implement the protocol.</description>
+      <author>Jelle Zijlstra (jelle.zijlstra@gmail.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0688/</guid>
+      <pubDate>Sat, 23 Apr 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 689: Unstable C API tier</title>
+      <link>https://peps.python.org/pep-0689/</link>
+      <description>Some functions and types of the C-API are designated unstable, meaning that they will not change in patch (bugfix/security) releases, but may change between minor releases (e.g. between 3.11 and 3.12) without deprecation warnings.</description>
+      <author>Petr Viktorin (encukou@gmail.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0689/</guid>
+      <pubDate>Fri, 22 Apr 2022 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>PEP 687: Isolating modules in the standard library</title>
+      <link>https://peps.python.org/pep-0687/</link>
+      <description>Extensions in the standard library will be converted to multi-phase initialization (PEP 489) and where possible, all state will be stored on module objects rather than in process-global variables.</description>
+      <author>Erlend Egeberg Aasland (erlend.aasland@protonmail.com), Petr Viktorin (encukou@gmail.com)</author>
+      <guid isPermaLink="true">https://peps.python.org/pep-0687/</guid>
+      <pubDate>Mon, 04 Apr 2022 00:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
